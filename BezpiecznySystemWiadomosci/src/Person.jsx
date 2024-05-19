@@ -1,59 +1,83 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import CryptoJS from 'crypto-js';
 
-const Person = ({ name }) => {
-  const [message, setMessage] = useState('');
-  const [receivedMessages, setReceivedMessages] = useState([]);
+const Person = ({ personName }) => {
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [encryptionKey, setEncryptionKey] = useState('');
 
   useEffect(() => {
-    const fetchMessages = async () => {
-      try {
-        const response = await axios.get('http://localhost:3000/messages');
-        if (response.data && response.data.length > 0) {
-          const decryptedMessages = response.data.map((msg) => {
-            return CryptoJS.AES.decrypt(msg, 'your_private_key').toString(CryptoJS.enc.Utf8);
-          });
-          setReceivedMessages(decryptedMessages);
-        }
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-      }
-    };
-
     fetchMessages();
   }, []);
 
-  const handleSendMessage = async () => {
-    if (!message) return;
-
-    const publicKeyB = 'public_key_of_person_B';
-
-    const encryptedMessage = CryptoJS.AES.encrypt(message, publicKeyB).toString();
-
+  const fetchMessages = async () => {
     try {
+      const response = await axios.get('http://localhost:3000/messages');
+      setMessages(response.data);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    }
+  };
+
+  const handleInputChange = (event) => {
+    setNewMessage(event.target.value);
+  };
+
+  const handleGenerateKey = () => {
+    const key = Math.random().toString(36).substring(2, 15);
+    setEncryptionKey(key);
+  };
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+    try {
+      const encryptedMessage = CryptoJS.AES.encrypt(newMessage, encryptionKey).toString();
       await axios.post('http://localhost:3000/send', { message: encryptedMessage });
-      console.log('Message sent successfully');
+      fetchMessages();
+      setNewMessage('');
     } catch (error) {
       console.error('Error sending message:', error);
     }
   };
 
+  const handleDeleteMessages = async () => {
+    try {
+      await axios.delete('http://localhost:3000/messages');
+      setMessages([]);
+    } catch (error) {
+      console.error('Error deleting messages:', error);
+    }
+  };
+
   return (
-    <div>
-      <h2>{name}</h2>
-      <div>
-        <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} />
-        <button onClick={handleSendMessage}>Send</button>
-      </div>
-      <div>
-        <h3>Received Messages</h3>
+    <div className="person">
+      <h2>{`Person ${personName}`}</h2>
+      <div className="chat">
         <ul>
-          {receivedMessages.map((msg, index) => (
-            <li key={index}>{msg}</li>
+          {messages.map((message, index) => (
+            <li key={index}>
+              {personName === 'A' || personName === 'B'
+                ? (personName === 'A'
+                  ? CryptoJS.AES.decrypt(message.message, encryptionKey).toString(CryptoJS.enc.Utf8)
+                  : message.message)
+                : message}
+            </li>
           ))}
         </ul>
       </div>
+      {(personName === 'A' || personName === 'B') && (
+        <form onSubmit={handleSubmit}>
+          <input
+            type="text"
+            value={newMessage}
+            onChange={handleInputChange}
+            placeholder="Enter your message"
+            className="message-input"
+          />
+          <button type="submit" className="message-button">Send</button>
+        </form>
+      )}
     </div>
   );
 };
