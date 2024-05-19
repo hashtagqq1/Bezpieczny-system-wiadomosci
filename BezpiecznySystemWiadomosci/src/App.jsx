@@ -1,13 +1,11 @@
 import React from 'react';
-import SendMessage from './sendMessage';
-import ReciveMessages from './ReciveMessage'
+import Person from './Person';
 
 const App = () => {
   return (
     <div>
-      <h1>Secure Messaging App</h1>
-      <SendMessage />
-      <ReciveMessages />
+      <Person name="Person A" />
+      <Person name="Person B" />
     </div>
   );
 };
